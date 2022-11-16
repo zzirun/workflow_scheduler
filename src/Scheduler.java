@@ -1,12 +1,16 @@
 // Online Java Compiler
 // Use this editor to write, compile and run your Java code online
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
+import java.util.stream.Collectors;
 //import org.json.*;
 
 class Job {
   private Integer id;
   private Integer dueDate;
-  private Integer processingTime;
+  private Double processingTime;
   private Job[] parents;
   private Job[] children;
 
@@ -20,7 +24,7 @@ class Job {
     this.dueDate = dueDate;
   }
 
-  public void setProcessingTime(Integer processingTime) {
+  public void setProcessingTime(Double processingTime) {
     this.processingTime = processingTime;
   }
 
@@ -49,7 +53,7 @@ class Job {
     return dueDate;
   }
 
-  public Integer getProcessingTime() {
+  public Double getProcessingTime() {
     return processingTime;
   }
 
@@ -65,9 +69,9 @@ class Job {
 
 class Schedule {
   private Deque<Job> jobs;
-  private int remainingTime;
+  private Double remainingTime;
   private List<Job> availJobs;
-  private int cost;
+  private Double cost;
 
   public Schedule(Schedule schedule) {
     this.jobs = new ArrayDeque<>(schedule.getJobs());
@@ -76,16 +80,16 @@ class Schedule {
     this.cost = schedule.getCost();
   }
 
-  public Schedule(int remainingTime, List<Job> availJobs) {
+  public Schedule(Double remainingTime, List<Job> availJobs) {
     this.remainingTime = remainingTime;
     this.availJobs = new ArrayList<>(availJobs);
     jobs = new ArrayDeque<>();
-    cost = 0;
+    cost = 0.0;
   }
 
   public void addJob(Job job) {
-    int tardiness
-        = Math.max(0, remainingTime - job.getDueDate());
+    Double tardiness
+        = Math.max(0.0, remainingTime - job.getDueDate());
     this.cost += tardiness;
     jobs.push(job);
     for (Job parent : job.getParents()) {
@@ -98,7 +102,7 @@ class Schedule {
     return;
   }
 
-  public int getRemainingTime() {
+  public Double getRemainingTime() {
     return remainingTime;
   }
 
@@ -110,22 +114,30 @@ class Schedule {
     return jobs;
   }
 
-  public int getCost() {
+  public Double getCost() {
     return cost;
   }
 }
 
 class Scheduler {
-  static List<Integer> PROCESS_TIMES = new ArrayList<>(List.of(0, 4, 17, 2, 2, 6, 2, 21, 6, 13, 6, 6, 2, 4, 4, 6, 13, 13, 13, 2, 4, 2, 4, 21, 6, 25, 17, 2, 4, 13, 2, 17));
+  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 3.8951, 16.9654, 2.2260, 2.2260, 5.9416,
+      2.2260, 20.6727, 5.9416, 12.7247, 5.9416, 5.9416, 2.2260, 3.8951, 3.8951, 5.9416, 12.7247, 12.7247,
+      12.7247, 2.2260, 3.8951, 2.2260, 3.8951, 20.6727, 5.9416, 24.4191, 16.9654, 2.2260, 3.8951, 12.7247,
+      2.2260, 16.9654));
+//  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0,
+//    6.0, 13.0, 6.0, 6.0, 2.0, 4.0, 4.0, 6.0, 13.0, 13.0, 13.0, 2.0, 4.0, 2.0, 4.0, 21.0, 6.0, 25.0,
+//    17.0, 2.0, 4.0, 13.0, 2.0, 17.0));
   static List<Integer> DUE_DATES =
       new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290,
           287, 253, 307, 279, 73, 355, 34, 233, 77, 88, 122, 71, 181, 340, 141,
           209, 217, 256, 144, 307, 329, 269));
-  static int TOTAL_PROCESSING_TIME = PROCESS_TIMES.stream().mapToInt(Integer::intValue).sum();
+  static Double TOTAL_PROCESSING_TIME = PROCESS_TIMES.stream().mapToDouble(Double::doubleValue).sum();
   static int MAX_ITERATIONS = 30000;
 
   static List<Job> jobNums;
   static Map<Integer, String> jobNames;
+
+  static String CSV_FILE_NAME = "bnb.csv";
 
   public static void main(String[] args) {
     System.out.println("Hello :(");
@@ -144,26 +156,29 @@ class Scheduler {
 
     System.out.println("Final solution: " + bestSchedule.getJobs());
 
-    System.out.println("Cost of final solution: " + recalcCost(bestSchedule.getJobs()));
+    System.out.println("Cost of final solution: " + bestSchedule.getCost());
+    System.out.println("Recalculating cost of final solution: " + recalcCost(bestSchedule.getJobs()));
+
+    writeToCSV(bestSchedule);
   }
 
-  private static int recalcCost(Deque<Job> jobs) {
-    int cost = 0;
-    int duration = 0;
+  private static Double recalcCost(Deque<Job> jobs) {
+    Double cost = 0.0;
+    Double duration = 0.0;
     for (Job job : jobs) {
       duration += job.getProcessingTime();
-      cost += Math.max(0, duration - job.getDueDate());
+      cost += Math.max(0.0, duration - (double) job.getDueDate());
     }
     return cost;
   }
 
   public static Schedule branchAndBound() {
     // Pending list of solutions mapped to lower bounds
-    TreeMap<Integer, Deque<Schedule>> costs = new TreeMap<>();
+    TreeMap<Double, Deque<Schedule>> costs = new TreeMap<>();
     Schedule currSchedule = new Schedule(TOTAL_PROCESSING_TIME, jobNums);
 
     int iter = 0;
-    int lowestBound;
+    Double lowestBound;
 
     while (iter < MAX_ITERATIONS) {
       System.out.println("Iteration: " + (iter+1));
@@ -187,7 +202,7 @@ class Scheduler {
         //System.out.println("Remaining time of curr schedule is " + currSchedule.getRemainingTime());
         Schedule newSchedule = new Schedule(currSchedule);
         newSchedule.addJob(job);
-        int cost = newSchedule.getCost();
+        Double cost = newSchedule.getCost();
 //        System.out.println("Adding job " + job + " with due date " + job.getDueDate());
         Deque<Schedule> schedules = costs.getOrDefault(cost, new ArrayDeque<>());
 //        System.out.println("Adding schedule " + newSchedule.getJobs() + " with lower bound " + cost);
@@ -215,7 +230,7 @@ class Scheduler {
     System.out.println("Max iterations reached. Generating feasible solution from partial solution.");
     TreeSet<Job> earliestDueDates
         = new TreeSet<>(Comparator.comparingInt(Job::getDueDate)
-        .thenComparingInt(Job::getProcessingTime));
+        .thenComparingDouble(Job::getProcessingTime));
     earliestDueDates.addAll(currSchedule.getAvailJobs());
     while (!earliestDueDates.isEmpty()) {
       currSchedule.addJob(earliestDueDates.pollFirst());
@@ -316,6 +331,19 @@ class Scheduler {
     allJobs[29].setParents(new Job[]{allJobs[30]});
 
     jobNums = new ArrayList<>(List.of(allJobs[31]));
+  }
+
+  private static void writeToCSV(Schedule schedule) {
+    String jobs = schedule.getJobs().stream()
+        .map(Job::toString)
+        .collect(Collectors.joining(","));
+    //System.out.println(jobs);
+    File csvOutputFile = new File(CSV_FILE_NAME);
+     try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
+         pw.println(jobs);
+     } catch (FileNotFoundException e) {
+       System.out.println("CSV file not found!");
+     }
   }
 
 }
