@@ -1,5 +1,4 @@
-package q2;// Online Java Compiler
-// Use this editor to write, compile and run your Java code online
+package q2;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -94,7 +93,6 @@ class Schedule {
     }
     availJobs.remove(job);
     remainingTime -= job.getProcessingTime();
-    return;
   }
 
   public Double getTardiness() {
@@ -119,77 +117,64 @@ class Schedule {
     return jobs;
   }
 
-  public int getNumJobs() { return jobs.size(); }
-
   public Double getCost() {
     return cost;
   }
 }
 
 class Scheduler {
-  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 3.7359, 16.5099, 2.2443, 2.2443, 5.8830,
-      2.2443, 20.6565, 5.8830, 12.6047, 5.8830, 5.8830, 2.2443, 3.7359, 3.7359, 5.8830, 12.6047, 12.6047,
-      12.6047, 2.2443, 3.7359, 2.2443, 3.7359, 20.6565, 5.8830, 24.6300, 16.5099, 2.2443, 3.7359, 12.6047,
-      2.2443, 16.5099));
-  //  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0,
-//    6.0, 13.0, 6.0, 6.0, 2.0, 4.0, 4.0, 6.0, 13.0, 13.0, 13.0, 2.0, 4.0, 2.0, 4.0, 21.0, 6.0, 25.0,
-//    17.0, 2.0, 4.0, 13.0, 2.0, 17.0));
-  static List<Integer> DUE_DATES =
-      new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290,
-          287, 253, 307, 279, 73, 355, 34, 233, 77, 88, 122, 71, 181, 340, 141,
-          209, 217, 256, 144, 307, 329, 269));
-  static Double TOTAL_PROCESSING_TIME = PROCESS_TIMES.stream().mapToDouble(Double::doubleValue).sum();
-  static int MAX_ITERATIONS = 30000;
+  private static final List<Double> PROCESS_TIMES = new ArrayList<>(
+      List.of(0.0, 3.7359, 16.5099, 2.2443, 2.2443, 5.8830, 2.2443, 20.6565, 5.8830, 12.6047,
+              5.8830, 5.8830, 2.2443, 3.7359, 3.7359, 5.8830, 12.6047, 12.6047, 12.6047, 2.2443,
+              3.7359, 2.2443, 3.7359, 20.6565, 5.8830, 24.6300, 16.5099, 2.2443, 3.7359, 12.6047,
+              2.2443, 16.5099));
+  private static final List<Integer> DUE_DATES =
+      new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290, 287, 253, 307, 279, 73,
+          355, 34, 233, 77, 88, 122, 71, 181, 340, 141, 209, 217, 256, 144, 307, 329, 269));
+  private static final Double TOTAL_PROCESSING_TIME =
+      PROCESS_TIMES.stream().mapToDouble(Double::doubleValue).sum();
+  private static final int MAX_ITERATIONS = 30000;
+  private static final String CSV_FILE_NAME = "bnb.csv";
 
-  static List<Job> jobNums;
-  static Map<Integer, String> jobNames;
-
-  static String CSV_FILE_NAME = "bnb.csv";
+  private static List<Job> jobNums;
 
   public static void main(String[] args) {
-    System.out.println("Hello :(");
-    System.out.println("Total processing time is " + TOTAL_PROCESSING_TIME);
-
     initializeJobs();
-    jobNames = initialiseJobNames();
     Schedule bestSchedule = branchAndBound();
 
     System.out.println("Final solution: " + bestSchedule.getJobs());
 
     System.out.println("Cost of final solution: " + bestSchedule.getCost());
-    System.out.println("Recalculating cost of final solution: " + bestSchedule.getTardiness());
+    System.out.println("Tardiness of final solution: " + bestSchedule.getTardiness());
 
     writeToCSV(bestSchedule);
   }
 
   public static Schedule branchAndBound() {
-    // Pending list of solutions mapped to lower bounds
-    int largestPendingNodes = Integer.MIN_VALUE;
+    // List of pending partial schedules sorted by cost
     PriorityQueue<Schedule> schedules
         = new PriorityQueue<>(Comparator.comparingDouble(Schedule::getCost));
-//                                        .thenComparing(Comparator.comparingInt(Schedule::getNumJobs)
-//                                            .reversed()));
+
     Schedule currSchedule = new Schedule(TOTAL_PROCESSING_TIME, jobNums);
     schedules.add(currSchedule);
 
+    int largestPendingNodes = Integer.MIN_VALUE;
     int iter = 0;
 
     while (iter < MAX_ITERATIONS) {
       System.out.println("Iteration: " + (iter+1));
 
-      List<Job> unusedJobs = currSchedule.getAvailJobs();
+      List<Job> availJobs = currSchedule.getAvailJobs();
 
-      // Remove current solution from pending list of solutions if it can be branched on
-      if (unusedJobs.size() > 0) {
-        schedules.poll();
-      }
+      // Remove solution we're branching on from our pending list
+      schedules.poll();
 
       // Branch on current solution
-      for (Job job : unusedJobs) {
-        //System.out.println("Remaining time of curr schedule is " + currSchedule.getRemainingTime());
+      for (Job job : availJobs) {
         Schedule newSchedule = new Schedule(currSchedule);
         newSchedule.addJob(job);
         schedules.add(newSchedule);
+
         // Phatoming
         if (newSchedule.getAvailJobs().isEmpty() && newSchedule != schedules.peek()) {
           Double cost = newSchedule.getCost();
@@ -227,49 +212,6 @@ class Scheduler {
     System.out.println("Largest size reached by list of pending nodes: " + largestPendingNodes);
 
     return currSchedule;
-  }
-
-  private static Map<Integer, String> initialiseJobNames() {
-    Map<Integer, String> jobNames = new HashMap<>();
-    String[] names = {
-        "onnx_1",
-        "muse_1",
-        "emboss_1",
-        "emboss_2",
-        "blur_1",
-        "emboss_3",
-        "vii_1",
-        "blur_2",
-        "wave_1",
-        "blur_3",
-        "blur_4",
-        "emboss_4",
-        "onnx_2",
-        "onnx_3",
-        "blur_5",
-        "wave_2",
-        "wave_3",
-        "wave_4",
-        "emboss_5",
-        "onnx_4",
-        "emboss_6",
-        "onnx_5",
-        "vii_2",
-        "blur_6",
-        "night_1",
-        "muse_2",
-        "emboss_7",
-        "onnx_6",
-        "wave_5",
-        "emboss_8",
-        "muse_3"
-    };
-
-    for (int i = 0; i < names.length; i++) {
-      jobNames.put(i + 1, names[i]);
-    }
-
-    return jobNames;
   }
 
   private static void initializeJobs() {
@@ -325,7 +267,6 @@ class Scheduler {
     String jobs = schedule.getJobs().stream()
         .map(Job::toString)
         .collect(Collectors.joining(","));
-    //System.out.println(jobs);
     File csvOutputFile = new File(CSV_FILE_NAME);
     try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
       pw.println(jobs);

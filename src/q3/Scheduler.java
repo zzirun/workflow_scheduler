@@ -1,5 +1,4 @@
-package q3;// Online Java Compiler
-// Use this editor to write, compile and run your Java code online
+package q3;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -86,6 +85,7 @@ class Schedule {
     Double tardiness
         = Math.max(0.0, remainingTime - job.getDueDate());
     jobs.push(job);
+    // Tightening lower bound
     this.cost += tardiness * (1 + (1/Math.pow(jobs.size(), 0.5)));
     for (Job parent : job.getParents()) {
       if (jobs.containsAll(Arrays.asList(parent.getChildren()))) {
@@ -126,31 +126,22 @@ class Schedule {
 }
 
 class Scheduler {
-//  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 3.8951, 16.9654, 2.2260, 2.2260, 5.9416,
-//      2.2260, 20.6727, 5.9416, 12.7247, 5.9416, 5.9416, 2.2260, 3.8951, 3.8951, 5.9416, 12.7247, 12.7247,
-//      12.7247, 2.2260, 3.8951, 2.2260, 3.8951, 20.6727, 5.9416, 24.4191, 16.9654, 2.2260, 3.8951, 12.7247,
-//      2.2260, 16.9654));
-  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0,
-  6.0, 13.0, 6.0, 6.0, 2.0, 4.0, 4.0, 6.0, 13.0, 13.0, 13.0, 2.0, 4.0, 2.0, 4.0, 21.0, 6.0, 25.0,
-  17.0, 2.0, 4.0, 13.0, 2.0, 17.0));
-  static List<Integer> DUE_DATES =
-      new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290,
-          287, 253, 307, 279, 73, 355, 34, 233, 77, 88, 122, 71, 181, 340, 141,
-          209, 217, 256, 144, 307, 329, 269));
-  static Double TOTAL_PROCESSING_TIME = PROCESS_TIMES.stream().mapToDouble(Double::doubleValue).sum();
-  static int MAX_ITERATIONS = 100000;
+  private static List<Double> PROCESS_TIMES = new ArrayList<>(
+      List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0, 6.0, 13.0, 6.0, 6.0, 2.0, 4.0, 4.0, 6.0,
+              13.0, 13.0, 13.0, 2.0, 4.0, 2.0, 4.0, 21.0, 6.0, 25.0, 17.0, 2.0, 4.0, 13.0, 2.0,
+              17.0));
+  private static List<Integer> DUE_DATES =
+      new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290, 287, 253, 307, 279, 73,
+          355, 34, 233, 77, 88, 122, 71, 181, 340, 141, 209, 217, 256, 144, 307, 329, 269));
+  private static Double TOTAL_PROCESSING_TIME =
+      PROCESS_TIMES.stream().mapToDouble(Double::doubleValue).sum();
+  private static int MAX_ITERATIONS = 30000;
+  private static String CSV_FILE_NAME = "bnbImproved.csv";
 
-  static List<Job> jobNums;
-  static Map<Integer, String> jobNames;
-
-  static String CSV_FILE_NAME = "bnbImproved.csv";
+  private static List<Job> jobNums;
 
   public static void main(String[] args) {
-    System.out.println("Hello :(");
-    System.out.println("Total processing time is " + TOTAL_PROCESSING_TIME);
-
     initializeJobs();
-    jobNames = initialiseJobNames();
     Schedule bestSchedule = branchAndBound();
 
     System.out.println("Final solution: " + bestSchedule.getJobs());
@@ -162,42 +153,38 @@ class Scheduler {
   }
 
   public static Schedule branchAndBound() {
-    // Pending list of solutions mapped to lower bounds
-    int largestPendingNodes = Integer.MIN_VALUE;
+    // List of pending partial schedules sorted by cost, then by their schedule length
     PriorityQueue<Schedule> schedules
         = new PriorityQueue<>(Comparator.comparingDouble(Schedule::getCost)
                                         .thenComparing(Comparator.comparingInt(Schedule::getNumJobs)
                                             .reversed()));
     Schedule currSchedule = new Schedule(TOTAL_PROCESSING_TIME, jobNums);
+    schedules.add(currSchedule);
 
+    int largestPendingNodes = Integer.MIN_VALUE;
     int iter = 0;
 
     while (iter < MAX_ITERATIONS) {
       System.out.println("Iteration: " + (iter+1));
 
-      List<Job> unusedJobs = currSchedule.getAvailJobs();
+      List<Job> availJobs = currSchedule.getAvailJobs();
 
-      // Remove current solution from pending list of solutions if it can be branched on
-      if (unusedJobs.size() > 0 && iter > 0) {
-        schedules.poll();
-      }
+      // Remove solution we're branching on from our pending list
+      schedules.poll();
 
       // Branch on current solution
       PriorityQueue<Schedule> incomingSchedules
           = new PriorityQueue<>(Comparator.comparingDouble(Schedule::getCost)
                                   .thenComparing(Comparator.comparingInt(Schedule::getNumJobs)
                                   .reversed()));
-      for (Job job : unusedJobs) {
+      for (Job job : availJobs) {
         Schedule newSchedule = new Schedule(currSchedule);
         newSchedule.addJob(job);
         incomingSchedules.add(newSchedule);
       }
 
-      //Double BEAM_WIDTH = (double)1/Math.pow(iter, 0.1);
-
-      // Beam search: blahblahblah explanation
+      // Beam search
       int incomingNum = 2;
-      //(int) Math.ceil(incomingSchedules.size() * BEAM_WIDTH);
       for (int i = 0; i < incomingNum && incomingSchedules.peek() != null; i++) {
         Schedule newSchedule = incomingSchedules.poll();
         schedules.add(newSchedule);
@@ -239,49 +226,6 @@ class Scheduler {
     System.out.println("Largest size reached by list of pending nodes: " + largestPendingNodes);
 
     return currSchedule;
-  }
-
-  private static Map<Integer, String> initialiseJobNames() {
-    Map<Integer, String> jobNames = new HashMap<>();
-    String[] names = {
-        "onnx_1",
-        "muse_1",
-        "emboss_1",
-        "emboss_2",
-        "blur_1",
-        "emboss_3",
-        "vii_1",
-        "blur_2",
-        "wave_1",
-        "blur_3",
-        "blur_4",
-        "emboss_4",
-        "onnx_2",
-        "onnx_3",
-        "blur_5",
-        "wave_2",
-        "wave_3",
-        "wave_4",
-        "emboss_5",
-        "onnx_4",
-        "emboss_6",
-        "onnx_5",
-        "vii_2",
-        "blur_6",
-        "night_1",
-        "muse_2",
-        "emboss_7",
-        "onnx_6",
-        "wave_5",
-        "emboss_8",
-        "muse_3"
-    };
-
-    for (int i = 0; i < names.length; i++) {
-      jobNames.put(i + 1, names[i]);
-    }
-
-    return jobNames;
   }
 
   private static void initializeJobs() {
@@ -337,7 +281,6 @@ class Scheduler {
     String jobs = schedule.getJobs().stream()
         .map(Job::toString)
         .collect(Collectors.joining(","));
-    //System.out.println(jobs);
     File csvOutputFile = new File(CSV_FILE_NAME);
     try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
       pw.println(jobs);
