@@ -1,11 +1,10 @@
-// Online Java Compiler
+package q2;// Online Java Compiler
 // Use this editor to write, compile and run your Java code online
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
-//import org.json.*;
 
 class Job {
   private Integer id;
@@ -43,10 +42,6 @@ class Job {
 
   public Job[] getChildren() {
     return children;
-  }
-
-  public Integer getId() {
-    return id;
   }
 
   public Integer getDueDate() {
@@ -102,6 +97,16 @@ class Schedule {
     return;
   }
 
+  public Double getTardiness() {
+    Double tardiness = 0.0;
+    Double duration = 0.0;
+    for (Job job : this.jobs) {
+      duration += job.getProcessingTime();
+      tardiness += Math.max(0.0, duration - (double) job.getDueDate());
+    }
+    return tardiness;
+  }
+
   public Double getRemainingTime() {
     return remainingTime;
   }
@@ -114,17 +119,19 @@ class Schedule {
     return jobs;
   }
 
+  public int getNumJobs() { return jobs.size(); }
+
   public Double getCost() {
     return cost;
   }
 }
 
 class Scheduler {
-  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 3.8951, 16.9654, 2.2260, 2.2260, 5.9416,
-      2.2260, 20.6727, 5.9416, 12.7247, 5.9416, 5.9416, 2.2260, 3.8951, 3.8951, 5.9416, 12.7247, 12.7247,
-      12.7247, 2.2260, 3.8951, 2.2260, 3.8951, 20.6727, 5.9416, 24.4191, 16.9654, 2.2260, 3.8951, 12.7247,
-      2.2260, 16.9654));
-//  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0,
+  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 3.7359, 16.5099, 2.2443, 2.2443, 5.8830,
+      2.2443, 20.6565, 5.8830, 12.6047, 5.8830, 5.8830, 2.2443, 3.7359, 3.7359, 5.8830, 12.6047, 12.6047,
+      12.6047, 2.2443, 3.7359, 2.2443, 3.7359, 20.6565, 5.8830, 24.6300, 16.5099, 2.2443, 3.7359, 12.6047,
+      2.2443, 16.5099));
+  //  static List<Double> PROCESS_TIMES = new ArrayList<>(List.of(0.0, 4.0, 17.0, 2.0, 2.0, 6.0, 2.0, 21.0,
 //    6.0, 13.0, 6.0, 6.0, 2.0, 4.0, 4.0, 6.0, 13.0, 13.0, 13.0, 2.0, 4.0, 2.0, 4.0, 21.0, 6.0, 25.0,
 //    17.0, 2.0, 4.0, 13.0, 2.0, 17.0));
   static List<Integer> DUE_DATES =
@@ -145,40 +152,27 @@ class Scheduler {
 
     initializeJobs();
     jobNames = initialiseJobNames();
-
-    // parsing input.json for jobs and due dates
-//    JSONParser parser = new JSONParser();
-//    JSONObject json = (JSONObject) parser.parse(new FileReader("input.json"));
-//    JSONObject deadlines = json.getJSONObject("workflow0").getJSONObject("due_dates");
-//    JSONArray edges = json.getJSONObject("workflow0").getJSONArray("edge_set");
-
     Schedule bestSchedule = branchAndBound();
 
     System.out.println("Final solution: " + bestSchedule.getJobs());
 
     System.out.println("Cost of final solution: " + bestSchedule.getCost());
-    System.out.println("Recalculating cost of final solution: " + recalcCost(bestSchedule.getJobs()));
+    System.out.println("Recalculating cost of final solution: " + bestSchedule.getTardiness());
 
     writeToCSV(bestSchedule);
   }
 
-  private static Double recalcCost(Deque<Job> jobs) {
-    Double cost = 0.0;
-    Double duration = 0.0;
-    for (Job job : jobs) {
-      duration += job.getProcessingTime();
-      cost += Math.max(0.0, duration - (double) job.getDueDate());
-    }
-    return cost;
-  }
-
   public static Schedule branchAndBound() {
     // Pending list of solutions mapped to lower bounds
-    TreeMap<Double, Deque<Schedule>> costs = new TreeMap<>();
+    int largestPendingNodes = Integer.MIN_VALUE;
+    PriorityQueue<Schedule> schedules
+        = new PriorityQueue<>(Comparator.comparingDouble(Schedule::getCost));
+//                                        .thenComparing(Comparator.comparingInt(Schedule::getNumJobs)
+//                                            .reversed()));
     Schedule currSchedule = new Schedule(TOTAL_PROCESSING_TIME, jobNums);
+    schedules.add(currSchedule);
 
     int iter = 0;
-    Double lowestBound;
 
     while (iter < MAX_ITERATIONS) {
       System.out.println("Iteration: " + (iter+1));
@@ -186,15 +180,8 @@ class Scheduler {
       List<Job> unusedJobs = currSchedule.getAvailJobs();
 
       // Remove current solution from pending list of solutions if it can be branched on
-      if (unusedJobs.size() > 0 && iter > 0) {
-        lowestBound = costs.firstKey();
-        Deque<Schedule> lowestBoundSchedules = costs.get(lowestBound);
-        lowestBoundSchedules.pop();
-        //System.out.println("Removing schedule " + currSchedule.getJobs());
-        if (lowestBoundSchedules.isEmpty()) {
-          //System.out.println("Removing " + lowestBound);
-          costs.remove(lowestBound);
-        }
+      if (unusedJobs.size() > 0) {
+        schedules.poll();
       }
 
       // Branch on current solution
@@ -202,25 +189,25 @@ class Scheduler {
         //System.out.println("Remaining time of curr schedule is " + currSchedule.getRemainingTime());
         Schedule newSchedule = new Schedule(currSchedule);
         newSchedule.addJob(job);
-        Double cost = newSchedule.getCost();
-//        System.out.println("Adding job " + job + " with due date " + job.getDueDate());
-        Deque<Schedule> schedules = costs.getOrDefault(cost, new ArrayDeque<>());
-//        System.out.println("Adding schedule " + newSchedule.getJobs() + " with lower bound " + cost);
-        schedules.push(newSchedule);
-        costs.put(cost, schedules);
+        schedules.add(newSchedule);
+        // Phatoming
+        if (newSchedule.getAvailJobs().isEmpty() && newSchedule != schedules.peek()) {
+          Double cost = newSchedule.getCost();
+          schedules.removeIf(n -> (n.getCost() > cost));
+        }
       }
 
+      largestPendingNodes = Math.max(largestPendingNodes, schedules.size());
+
       // Choose schedule with lowest lower bound (jumptracking)
-      lowestBound = costs.firstKey();
-      Deque<Schedule> lowestBoundSchedules = costs.get(lowestBound);
-      Schedule lowestSchedule = lowestBoundSchedules.peek();
-//      System.out.println("Lowest schedule: " + lowestSchedule.getJobs());
-      currSchedule = lowestSchedule;
+      currSchedule = schedules.peek();
       System.out.println("Current solution: " + currSchedule.getJobs());
       System.out.println("Cost of current solution: " + currSchedule.getCost());
 
-      if (currSchedule.getAvailJobs().isEmpty() && lowestBound <= costs.firstKey()) {
-        System.out.println("Found complete solution with smallest lower bound " + lowestBound);
+      if (currSchedule.getAvailJobs().isEmpty()) {
+        System.out.println("Found complete solution with smallest lower bound "
+            + currSchedule.getCost());
+        System.out.println("Largest size reached by list of pending nodes: " + largestPendingNodes);
         return currSchedule;
       }
       iter++;
@@ -237,8 +224,9 @@ class Scheduler {
       earliestDueDates.addAll(currSchedule.getAvailJobs());
     }
 
-    return currSchedule;
+    System.out.println("Largest size reached by list of pending nodes: " + largestPendingNodes);
 
+    return currSchedule;
   }
 
   private static Map<Integer, String> initialiseJobNames() {
@@ -339,11 +327,11 @@ class Scheduler {
         .collect(Collectors.joining(","));
     //System.out.println(jobs);
     File csvOutputFile = new File(CSV_FILE_NAME);
-     try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
-         pw.println(jobs);
-     } catch (FileNotFoundException e) {
-       System.out.println("CSV file not found!");
-     }
+    try (PrintWriter pw = new PrintWriter(csvOutputFile)) {
+      pw.println(jobs);
+    } catch (FileNotFoundException e) {
+      System.out.println("CSV file not found!");
+    }
   }
 
 }
