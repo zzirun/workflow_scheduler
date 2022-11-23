@@ -7,129 +7,12 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class Job {
-  private Integer id;
-  private Integer dueDate;
-  private Double processingTime;
-  private Job[] parents;
-  private Job[] children;
-
-  public Job(Integer id) {
-    this.id = id;
-    this.parents = new Job[0];
-    this.children = new Job[0];
-  }
-
-  public void setDueDate(Integer dueDate) {
-    this.dueDate = dueDate;
-  }
-
-  public void setProcessingTime(Double processingTime) {
-    this.processingTime = processingTime;
-  }
-
-  public void setParents(Job[] parents) {
-    this.parents = parents;
-    for (Job parent : parents) {
-      List<Job> children = new ArrayList<>(Arrays.asList(parent.getChildren()));
-      children.add(this);
-      parent.setChildren(children.toArray(new Job[children.size()]));
-    }
-  }
-
-  public void setChildren(Job[] children) {
-    this.children = children;
-  }
-
-  public Job[] getChildren() {
-    return children;
-  }
-
-  public Integer getDueDate() {
-    return dueDate;
-  }
-
-  public Double getProcessingTime() {
-    return processingTime;
-  }
-
-  public Job[] getParents() {
-    return parents;
-  }
-
-  @Override
-  public String toString() {
-    return id.toString();
-  }
-}
-
-class Schedule {
-  private Deque<Job> jobs;
-  private Double remainingTime;
-  private List<Job> availJobs;
-  private Double cost;
-
-  public Schedule(Schedule schedule) {
-    this.jobs = new ArrayDeque<>(schedule.getJobs());
-    this.availJobs = new ArrayList<>(schedule.getAvailJobs());
-    this.remainingTime = schedule.getRemainingTime();
-    this.cost = schedule.getCost();
-  }
-
-  public Schedule(Double remainingTime, List<Job> availJobs) {
-    this.remainingTime = remainingTime;
-    this.availJobs = new ArrayList<>(availJobs);
-    jobs = new ArrayDeque<>();
-    cost = 0.0;
-  }
-
-  public void addJob(Job job) {
-    Double tardiness
-        = Math.max(0.0, remainingTime - job.getDueDate());
-    this.cost += tardiness;
-    jobs.push(job);
-    for (Job parent : job.getParents()) {
-      if (jobs.containsAll(Arrays.asList(parent.getChildren()))) {
-        availJobs.add(parent);
-      }
-    }
-    availJobs.remove(job);
-    remainingTime -= job.getProcessingTime();
-  }
-
-  public Double getTardiness() {
-    Double tardiness = 0.0;
-    Double duration = 0.0;
-    for (Job job : this.jobs) {
-      duration += job.getProcessingTime();
-      tardiness += Math.max(0.0, duration - (double) job.getDueDate());
-    }
-    return tardiness;
-  }
-
-  public Double getRemainingTime() {
-    return remainingTime;
-  }
-
-  public List<Job> getAvailJobs() {
-    return availJobs;
-  }
-
-  public Deque<Job> getJobs() {
-    return jobs;
-  }
-
-  public Double getCost() {
-    return cost;
-  }
-}
-
 class Scheduler {
   private static final List<Double> PROCESS_TIMES = new ArrayList<>(
       List.of(0.0, 3.7359, 16.5099, 2.2443, 2.2443, 5.8830, 2.2443, 20.6565, 5.8830, 12.6047,
-              5.8830, 5.8830, 2.2443, 3.7359, 3.7359, 5.8830, 12.6047, 12.6047, 12.6047, 2.2443,
-              3.7359, 2.2443, 3.7359, 20.6565, 5.8830, 24.6300, 16.5099, 2.2443, 3.7359, 12.6047,
-              2.2443, 16.5099));
+          5.8830, 5.8830, 2.2443, 3.7359, 3.7359, 5.8830, 12.6047, 12.6047, 12.6047, 2.2443,
+          3.7359, 2.2443, 3.7359, 20.6565, 5.8830, 24.6300, 16.5099, 2.2443, 3.7359, 12.6047,
+          2.2443, 16.5099));
   private static final List<Integer> DUE_DATES =
       new ArrayList<>(List.of(0, 172, 82, 18, 61, 93, 71, 217, 295, 290, 287, 253, 307, 279, 73,
           355, 34, 233, 77, 88, 122, 71, 181, 340, 141, 209, 217, 256, 144, 307, 329, 269));
@@ -141,6 +24,7 @@ class Scheduler {
   private static List<Job> jobNums;
 
   public static void main(String[] args) throws FileNotFoundException {
+    System.out.println("Writing output to q2Output.txt and final schedule to bnb.csv");
     PrintStream out = new PrintStream(
         new FileOutputStream("q2Output.txt", false), true);
     System.setOut(out);
@@ -281,3 +165,121 @@ class Scheduler {
   }
 
 }
+
+class Job {
+  private Integer id;
+  private Integer dueDate;
+  private Double processingTime;
+  private Job[] parents;
+  private Job[] children;
+
+  public Job(Integer id) {
+    this.id = id;
+    this.parents = new Job[0];
+    this.children = new Job[0];
+  }
+
+  public void setDueDate(Integer dueDate) {
+    this.dueDate = dueDate;
+  }
+
+  public void setProcessingTime(Double processingTime) {
+    this.processingTime = processingTime;
+  }
+
+  public void setParents(Job[] parents) {
+    this.parents = parents;
+    for (Job parent : parents) {
+      List<Job> children = new ArrayList<>(Arrays.asList(parent.getChildren()));
+      children.add(this);
+      parent.setChildren(children.toArray(new Job[children.size()]));
+    }
+  }
+
+  public void setChildren(Job[] children) {
+    this.children = children;
+  }
+
+  public Job[] getChildren() {
+    return children;
+  }
+
+  public Integer getDueDate() {
+    return dueDate;
+  }
+
+  public Double getProcessingTime() {
+    return processingTime;
+  }
+
+  public Job[] getParents() {
+    return parents;
+  }
+
+  @Override
+  public String toString() {
+    return id.toString();
+  }
+}
+
+class Schedule {
+  private Deque<Job> jobs;
+  private Double remainingTime;
+  private List<Job> availJobs;
+  private Double cost;
+
+  public Schedule(Schedule schedule) {
+    this.jobs = new ArrayDeque<>(schedule.getJobs());
+    this.availJobs = new ArrayList<>(schedule.getAvailJobs());
+    this.remainingTime = schedule.getRemainingTime();
+    this.cost = schedule.getCost();
+  }
+
+  public Schedule(Double remainingTime, List<Job> availJobs) {
+    this.remainingTime = remainingTime;
+    this.availJobs = new ArrayList<>(availJobs);
+    jobs = new ArrayDeque<>();
+    cost = 0.0;
+  }
+
+  public void addJob(Job job) {
+    Double tardiness
+        = Math.max(0.0, remainingTime - job.getDueDate());
+    this.cost += tardiness;
+    jobs.push(job);
+    for (Job parent : job.getParents()) {
+      if (jobs.containsAll(Arrays.asList(parent.getChildren()))) {
+        availJobs.add(parent);
+      }
+    }
+    availJobs.remove(job);
+    remainingTime -= job.getProcessingTime();
+  }
+
+  public Double getTardiness() {
+    Double tardiness = 0.0;
+    Double duration = 0.0;
+    for (Job job : this.jobs) {
+      duration += job.getProcessingTime();
+      tardiness += Math.max(0.0, duration - (double) job.getDueDate());
+    }
+    return tardiness;
+  }
+
+  public Double getRemainingTime() {
+    return remainingTime;
+  }
+
+  public List<Job> getAvailJobs() {
+    return availJobs;
+  }
+
+  public Deque<Job> getJobs() {
+    return jobs;
+  }
+
+  public Double getCost() {
+    return cost;
+  }
+}
+
