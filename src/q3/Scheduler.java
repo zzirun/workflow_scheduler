@@ -1,6 +1,8 @@
 package q3;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -140,7 +142,10 @@ class Scheduler {
 
   private static List<Job> jobNums;
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws FileNotFoundException {
+    PrintStream out = new PrintStream(
+        new FileOutputStream("q3Output.txt", false), true);
+    System.setOut(out);
     initializeJobs();
     Schedule bestSchedule = branchAndBound();
 
